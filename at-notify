@@ -1,0 +1,124 @@
+#!/bin/bash
+#------------------------
+# MIT License
+#
+# Copyright (c) 2016 Télécoms Sans Frontières
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+#
+#------------------------
+# Author: Telecoms Sans Frontieres
+# Mail: it@tsfi.org
+# GIT Repository: https://github.com/TelecomsSansFrontieres
+#
+# Contributors:
+# - Florent Bervas
+#------------------------
+
+# Usage function
+function usage {
+	cat << EOF
+Usage: $(basename ${0}) -d [N] -m [EMAIL] -e [CMD]
+This script is an handler to \`at\` command with notifications.
+
+  -d,--delay [N]    number of days to delay
+  -m,--mail [EMAIL] email address to send notification to
+  -e,--exec [CMD]   command to execute after defined delay
+  -h,--help         print this help
+
+EOF
+
+    return 1
+}
+
+# Get parameters
+OPTS=$(getopt -o d:m:e:h --long delay:,mail:,exec:help -n 'parse-options' -- "$@")
+
+# Check options handler return code
+if [ $? != 0 ]
+then
+    echo "Failed parsing options." >&2
+    usage
+    exit 1
+fi
+
+eval set -- "$OPTS"
+
+# Process arguments
+while true
+do
+    case "$1" in
+        -d | --delay )
+            DELAY=${2}; shift; shift ;;
+        -m | --mail )
+            EMAIL=${2}; shift; shift ;;
+        -e | --exec )
+            EXEC=${2}; shift; shift ;;
+        -h | --help )
+            usage; exit 0 ;;
+        -- )
+            shift; break ;;
+        * )
+            break ;;
+    esac
+done
+
+# Process if argmuents are validated
+if   [ $(echo ${DELAY} | grep "^[0-9]*$") ]\
+        && [ $( echo "${EMAIL}" | grep "@") ]\
+        && (\
+            [ $( which $(echo "${EXEC}" | awk '{ print $1 }') ) ]\
+            || [ -f $(echo "${EXEC}" | awk '{ print $1 }') ]\
+        ); then
+
+    # Initialize process
+    atlog=$(echo ${EXEC} | at now + ${DELAY} day 2>&1 | tail -1)
+    jobid=$(echo ${atlog} | awk '/job/ {print $2}')
+    ddate=$(echo ${atlog} | awk '/job/ { print substr($0, index($0,$4)) }')
+
+    # Prepare email
+    msubj="[${USER}@$(hostname)] Automated job ${jobid} planned on ${ddate}"
+    mmesg="
+Dear ${USER},
+
+The following job has been automatically planned:
+
+    Server: $(hostname)
+    Date: $(date)
+    Job: ${EXEC}
+    Id: ${jobid}
+    Execution time: ${ddate}
+
+If you want to cancel it, please execute the following command on the server as ${USER}:
+
+    atrm ${jobid}
+
+If no action is performed, the job will be automatically executed.
+"
+    # Send email notification
+    echo "${mmesg}" | mail -s "${msubj}" ${EMAIL}
+
+# If mistake in arguments
+else
+    usage
+    exit 1
+fi
+
+exit $?

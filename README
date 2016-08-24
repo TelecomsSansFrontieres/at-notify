@@ -1,0 +1,22 @@
+# at-notify
+#------------------------
+# Author: Telecoms Sans Frontieres
+# Mail: it@tsfi.org
+# GIT Repository: https://github.com/TelecomsSansFrontieres
+#
+# Contributors:
+# - Florent Bervas
+#------------------------
+
+Usage: at-notify -d [N] -m [EMAIL] -e [CMD]
+This script is an handler to `at` command with notifications.
+
+  -d,--delay [N]    number of days to delay
+  -m,--mail [EMAIL] email address to send notification to
+  -e,--exec [CMD]   command to execute after defined delay
+  -h,--help         print this help
+
+
+example: restart the service ntpd in 5 days
+
+    at-notify -d 5 -m admin@example.com -e "service ntpd restart"
