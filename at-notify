@@ -96,7 +96,7 @@ if   [ $(echo ${DELAY} | grep "^[0-9]*$") ]\
     # Prepare email
     msubj="[${USER}@$(hostname)] Automated job ${jobid} planned on ${ddate}"
     mmesg="
-Dear ${USER},
+Dear user,
 
 The following job has been automatically planned:
 
